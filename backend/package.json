@@ -1,0 +1,24 @@
+{
+  "name": "retail-athena-federated-backend",
+  "version": "1.0.0",
+  "description": "Serverless AWS Lambda backend for Retail Sales Intelligence Dashboard using Amazon Athena Federated Query across S3 and RDS MySQL",
+  "main": "src/handler.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server-local.js",
+    "test": "node test-local.js"
+  },
+  "keywords": [
+    "aws-lambda",
+    "amazon-athena",
+    "federated-query",
+    "s3",
+    "rds-mysql",
+    "api-gateway"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@aws-sdk/client-athena": "^3.750.0"
+  }
+}

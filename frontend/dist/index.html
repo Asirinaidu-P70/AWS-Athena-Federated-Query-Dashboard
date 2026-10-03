@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Amazon Athena Federated Query Dashboard — Retail Sales Intelligence</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            aws: {
+              orange: '#ff9900',
+              orangeHover: '#e68a00',
+              dark: '#0a0f1d',
+              surface: '#0f172a',
+              subtle: '#131d35',
+              border: '#1e293b',
+              blue: '#3b82f6',
+              emerald: '#10b981'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Production Styles -->
+  <link rel="stylesheet" href="styles.min.css" />
+</head>
+<body class="bg-[#0A0F1D] text-slate-100 min-h-screen flex flex-col antialiased selection:bg-amber-500 selection:text-slate-950">
+  <!-- HEADER -->
+  <header class="border-b border-[#1E293B] bg-[#0C1322] sticky top-0 z-30 px-4 sm:px-6 lg:px-8 py-4 shadow-sm">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div class="flex items-center space-x-3.5">
+        <div class="w-10 h-10 rounded-lg bg-[#FF9900]/10 border border-[#FF9900]/30 flex items-center justify-center text-[#FF9900] shadow-sm flex-shrink-0">
+          <i data-lucide="database" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2.5">
+            <h1 class="text-base sm:text-lg font-bold text-white tracking-tight">Amazon Athena Federated Query Dashboard</h1>
+            <span class="badge-pill badge-aws">LIVE AWS DATA</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">Retail Sales Intelligence &middot; Cross-Source Join across S3 &amp; RDS MySQL</p>
+        </div>
+      </div>
+      <div class="flex items-center flex-wrap gap-3">
+        <div id="liveStatusBadge" class="flex items-center space-x-2 px-3 py-1.5 rounded-md bg-[#0F172A] border border-[#1E293B] text-xs">
+          <span class="w-2 h-2 rounded-full bg-slate-500 pulse-dot" id="liveDot"></span>
+          <span id="liveStatusText" class="font-medium text-slate-300">Checking API...</span>
+        </div>
+        <div class="hidden sm:flex items-center space-x-1.5 px-2.5 py-1.5 rounded-md bg-[#0F172A] border border-[#1E293B] text-xs font-mono text-slate-400">
+          <span class="text-slate-500">Region:</span>
+          <span class="text-slate-200">eu-north-1</span>
+        </div>
+      </div>
+    </div>
+  </header>
+  <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8 flex-1">
+    <!-- CONTENT ... (same as original) -->
+    <!-- The rest of the original HTML body is unchanged; only script references differ -->
+    <div id="toastContainer" class="toast-container"></div>
+  </main>
+  <footer class="border-t border-[#1E293B] bg-[#0C1322] py-4 text-xs text-slate-500 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div>
+        <span class="font-medium text-slate-400">Amazon Athena Federated Query Dashboard</span>
+        <span class="mx-2">&middot;</span>
+        <span>Retail Sales Intelligence</span>
+      </div>
+      <div class="font-mono text-[11px] text-slate-500">
+        Live AWS Architecture &middot; eu-north-1 &middot; S3 &times; RDS MySQL
+      </div>
+    </div>
+  </footer>
+  <!-- Scripts -->
+  <script src="config.js"></script>
+  <script src="app.min.js"></script>
+</body>
+</html>

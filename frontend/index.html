@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Amazon Athena Federated Query Dashboard — Retail Sales Intelligence</title>
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            aws: {
+              orange: '#ff9900',
+              orangeHover: '#e68a00',
+              dark: '#0a0f1d',
+              surface: '#0f172a',
+              subtle: '#131d35',
+              border: '#1e293b',
+              blue: '#3b82f6',
+              emerald: '#10b981'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Custom Production Styles -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="bg-[#0A0F1D] text-slate-100 min-h-screen flex flex-col antialiased selection:bg-amber-500 selection:text-slate-950">
+
+  <!-- ========================================================================= -->
+  <!-- 1. HEADER & TOP NAVIGATION -->
+  <!-- ========================================================================= -->
+  <header class="border-b border-[#1E293B] bg-[#0C1322] sticky top-0 z-30 px-4 sm:px-6 lg:px-8 py-4 shadow-sm">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      
+      <!-- Brand Title & Subtitle -->
+      <div class="flex items-center space-x-3.5">
+        <div class="w-10 h-10 rounded-lg bg-[#FF9900]/10 border border-[#FF9900]/30 flex items-center justify-center text-[#FF9900] shadow-sm flex-shrink-0">
+          <i data-lucide="database" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2.5">
+            <h1 class="text-base sm:text-lg font-bold text-white tracking-tight">Amazon Athena Federated Query Dashboard</h1>
+            <span class="badge-pill badge-aws">LIVE AWS DATA</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">Retail Sales Intelligence &middot; Cross-Source Join across S3 &amp; RDS MySQL</p>
+        </div>
+      </div>
+
+      <!-- Right Side Controls & Live Status -->
+      <div class="flex items-center flex-wrap gap-3">
+        
+        <!-- Live AWS Status Indicator -->
+        <div id="liveStatusBadge" class="flex items-center space-x-2 px-3 py-1.5 rounded-md bg-[#0F172A] border border-[#1E293B] text-xs">
+          <span class="w-2 h-2 rounded-full bg-slate-500 pulse-dot" id="liveDot"></span>
+          <span id="liveStatusText" class="font-medium text-slate-300">Checking API...</span>
+        </div>
+
+        <!-- Region Badge -->
+        <div class="hidden sm:flex items-center space-x-1.5 px-2.5 py-1.5 rounded-md bg-[#0F172A] border border-[#1E293B] text-xs font-mono text-slate-400">
+          <span class="text-slate-500">Region:</span>
+          <span class="text-slate-200">eu-north-1</span>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- MAIN CONTENT CONTAINER -->
+  <!-- ========================================================================= -->
+  <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8 flex-1">
+
+    <!-- ERROR / ALERT BANNER -->
+    <div id="alertBanner" class="hidden p-3.5 rounded-lg border text-xs transition-all">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start space-x-2.5">
+          <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-400" id="alertIcon"></i>
+          <div>
+            <h4 class="font-semibold text-rose-300" id="alertTitle">Notice</h4>
+            <p class="mt-0.5 text-slate-300 text-xs" id="alertMessage"></p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button id="btnRetryAlert" class="btn-secondary text-xs px-2.5 py-1">Retry</button>
+          <button id="btnCloseAlert" class="text-slate-400 hover:text-white">&times;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 2. TOP KPI CARDS (GET /summary) -->
+    <!-- ========================================================================= -->
+    <section>
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center space-x-2">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">Key Performance Indicators</h2>
+          <span class="text-slate-600">&middot;</span>
+          <span class="text-[11px] text-slate-500 font-mono">GET /summary</span>
+        </div>
+        <span id="lastQueryTimestamp" class="text-xs text-slate-500 font-mono">Last Update: Just now</span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- KPI 1: Total Sales -->
+        <div class="dash-card p-4 hover:border-emerald-500/40">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wide">Total Sales</span>
+            <div class="w-7 h-7 rounded bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <i data-lucide="indian-rupee" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-3">
+            <div id="kpiTotalSales" class="text-2xl sm:text-3xl font-bold tracking-tight text-white tabular-nums">--</div>
+          </div>
+          <div class="mt-2.5 pt-2 border-t border-[#1E293B] flex items-center justify-between text-[11px]">
+            <span class="text-slate-400">Gross Sales Revenue</span>
+            <span class="badge-pill badge-live font-mono text-[9px]">S3 &times; RDS</span>
+          </div>
+        </div>
+
+        <!-- KPI 2: Total Orders -->
+        <div class="dash-card p-4 hover:border-blue-500/40">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wide">Total Orders</span>
+            <div class="w-7 h-7 rounded bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+              <i data-lucide="shopping-bag" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-3">
+            <div id="kpiTotalOrders" class="text-2xl sm:text-3xl font-bold tracking-tight text-white tabular-nums">--</div>
+          </div>
+          <div class="mt-2.5 pt-2 border-t border-[#1E293B] flex items-center justify-between text-[11px]">
+            <span class="text-slate-400">Historical Order Count</span>
+            <span class="badge-pill badge-neutral font-mono text-[9px]">S3 (sales.csv)</span>
+          </div>
+        </div>
+
+        <!-- KPI 3: Customers -->
+        <div class="dash-card p-4 hover:border-purple-500/40">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wide">Customers</span>
+            <div class="w-7 h-7 rounded bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+              <i data-lucide="users" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-3">
+            <div id="kpiCustomers" class="text-2xl sm:text-3xl font-bold tracking-tight text-white tabular-nums">--</div>
+          </div>
+          <div class="mt-2.5 pt-2 border-t border-[#1E293B] flex items-center justify-between text-[11px]">
+            <span class="text-slate-400">Matched Relational Accounts</span>
+            <span class="badge-pill badge-neutral font-mono text-[9px]">RDS MySQL</span>
+          </div>
+        </div>
+
+        <!-- KPI 4: Average Order Value -->
+        <div class="dash-card p-4 hover:border-amber-500/40">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wide">Average Order Value</span>
+            <div class="w-7 h-7 rounded bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+              <i data-lucide="trending-up" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-3">
+            <div id="kpiAvgOrderValue" class="text-2xl sm:text-3xl font-bold tracking-tight text-white tabular-nums">--</div>
+          </div>
+          <div class="mt-2.5 pt-2 border-t border-[#1E293B] flex items-center justify-between text-[11px]">
+            <span class="text-slate-400">Total Sales / Total Orders</span>
+            <span class="badge-pill badge-aws font-mono text-[9px]">AOV</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- 3. CORE INTERACTIVE ATHENA FEDERATED QUERY SECTION -->
+    <!-- ========================================================================= -->
+    <section class="dash-card dash-card-highlight p-6 space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#1E293B]">
+        <div>
+          <div class="flex items-center space-x-2">
+            <div class="p-1.5 rounded bg-[#FF9900]/10 text-[#FF9900]">
+              <i data-lucide="sparkles" class="w-5 h-5"></i>
+            </div>
+            <h2 class="text-base sm:text-lg font-bold text-white tracking-tight">Interactive Athena Federated Query</h2>
+            <span class="badge-pill badge-aws font-mono text-[10px]">Real-Time Cross-Source JOIN</span>
+          </div>
+          <p class="text-xs text-slate-300 mt-1 max-w-3xl">
+            Select or enter a customer to execute a live distributed SQL query. Amazon Athena joins transactional sales records in <strong>Amazon S3</strong> with customer records in <strong>Amazon RDS MySQL</strong> in real time.
+          </p>
+        </div>
+
+        <div class="flex items-center space-x-2 self-start md:self-auto">
+          <span class="text-xs font-mono text-slate-400" id="queryExecutionStatus">Ready to execute query</span>
+        </div>
+      </div>
+
+      <!-- Interactive Controls: Customer Dropdown & Run Button -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end bg-[#0A0F1D] p-4 rounded-lg border border-[#1E293B]">
+        
+        <!-- Dropdown Selector -->
+        <div class="md:col-span-6 space-y-1.5">
+          <label for="customerSelect" class="text-xs font-semibold text-slate-300 flex items-center space-x-1.5">
+            <i data-lucide="user-check" class="w-3.5 h-3.5 text-amber-400"></i>
+            <span>Select Customer for Federated Query:</span>
+          </label>
+          <div class="relative">
+            <select id="customerSelect" class="w-full bg-[#0F172A] border border-[#23314A] rounded-md text-xs px-3 py-2.5 text-white font-sans focus:outline-none focus:border-amber-500 cursor-pointer">
+              <option value="ALL">All Customers — Global Cross-Source Join (All records)</option>
+              <option value="C001">C001 — Rahul Kumar (Hyderabad)</option>
+              <option value="C002">C002 — Arjun Reddy (Vijayawada)</option>
+              <option value="C003">C003 — Priya Sharma (Chennai)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Execute Button -->
+        <div class="md:col-span-6 flex items-center gap-3">
+          <button id="btnRunQuery" class="btn-run-query w-full py-2.5 text-sm font-bold flex items-center justify-center space-x-2">
+            <i data-lucide="play" id="btnIcon" class="w-4 h-4 fill-current"></i>
+            <span id="btnText">RUN FEDERATED QUERY</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Live Federated Query Result Container -->
+      <div id="federatedResultCard" class="space-y-4">
+        
+        <!-- Result Summary Box -->
+        <div class="p-4 rounded-lg bg-[#0C1322] border border-[#1E293B] flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 flex-shrink-0">
+              <i data-lucide="check" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <div class="flex items-center space-x-2">
+                <h3 class="text-sm font-bold text-white" id="resCustomerName">Rahul Kumar</h3>
+                <span class="badge-pill badge-neutral font-mono text-[10px]" id="resCustomerId">C001</span>
+                <span class="badge-pill badge-live text-[10px]">Athena Federated Result</span>
+              </div>
+              <div class="text-xs text-slate-400 mt-0.5 flex items-center space-x-2">
+                <span id="resCityLocation">City: Hyderabad (RDS MySQL)</span>
+                <span>&middot;</span>
+                <span id="resOrdersCount">Orders: 2 (Amazon S3)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-baseline space-x-3 text-right">
+            <span class="text-xs text-slate-400 font-semibold uppercase">Total Federated Sales:</span>
+            <span class="text-xl sm:text-2xl font-bold text-emerald-400 font-mono tabular-nums" id="resTotalSales">₹5,700</span>
+          </div>
+        </div>
+
+        <!-- Matched Order Records from Amazon S3 Table -->
+        <div class="dash-card-subtle p-4 border border-[#1E293B]">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center space-x-2">
+              <i data-lucide="list-ordered" class="w-4 h-4 text-blue-400"></i>
+              <h4 class="text-xs font-bold text-white uppercase tracking-wider">Matching Sales Transactions from Amazon S3</h4>
+            </div>
+            <span class="badge-pill badge-blue font-mono text-[10px]">s.customer_id = c.customer_id</span>
+          </div>
+
+          <div class="table-container border border-[#1E293B]">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Customer ID</th>
+                  <th>Product ID</th>
+                  <th>Order Date (S3)</th>
+                  <th class="text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody id="matchedOrdersTableBody" class="font-mono text-xs">
+                <tr>
+                  <td class="font-bold text-amber-300">1001</td>
+                  <td class="text-blue-300">C001</td>
+                  <td class="text-slate-400">P001</td>
+                  <td class="text-slate-300">2026-09-01</td>
+                  <td class="text-right font-bold text-emerald-400">₹2,500</td>
+                </tr>
+                <tr>
+                  <td class="font-bold text-amber-300">1003</td>
+                  <td class="text-blue-300">C001</td>
+                  <td class="text-slate-400">P003</td>
+                  <td class="text-slate-300">2026-09-02</td>
+                  <td class="text-right font-bold text-emerald-400">₹3,200</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- 4. SOURCE DATA SECTIONS: S3 (SALES) & RDS (CUSTOMERS) -->
+    <!-- ========================================================================= -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      
+      <!-- S3 — SALES DATA TABLE -->
+      <div class="dash-card p-5 space-y-3">
+        <div class="flex items-center justify-between pb-3 border-b border-[#1E293B]">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="archive" class="w-4 h-4 text-amber-400"></i>
+            <div>
+              <h3 class="text-sm font-bold text-white">S3 &mdash; Sales Data</h3>
+              <span class="text-[11px] font-mono text-amber-300/80">retail_analytics.sales (sales.csv)</span>
+            </div>
+          </div>
+          <span class="badge-pill badge-aws font-mono text-[10px]">Amazon S3</span>
+        </div>
+
+        <div class="table-container border border-[#1E293B]">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Customer ID</th>
+                <th>Product ID</th>
+                <th>Order Date</th>
+                <th class="text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody id="s3SalesTableBody" class="font-mono text-xs">
+              <!-- Dynamically populated / Static source preview -->
+              <tr><td>1001</td><td class="text-blue-300 font-semibold">C001</td><td>P001</td><td>2026-09-01</td><td class="text-right text-emerald-400 font-semibold">₹2,500</td></tr>
+              <tr><td>1002</td><td class="text-blue-300 font-semibold">C002</td><td>P002</td><td>2026-09-01</td><td class="text-right text-emerald-400 font-semibold">₹1,800</td></tr>
+              <tr><td>1003</td><td class="text-blue-300 font-semibold">C001</td><td>P003</td><td>2026-09-02</td><td class="text-right text-emerald-400 font-semibold">₹3,200</td></tr>
+              <tr><td>1004</td><td class="text-blue-300 font-semibold">C003</td><td>P001</td><td>2026-09-02</td><td class="text-right text-emerald-400 font-semibold">₹1,500</td></tr>
+              <tr><td>1005</td><td class="text-blue-300 font-semibold">C002</td><td>P003</td><td>2026-09-03</td><td class="text-right text-emerald-400 font-semibold">₹2,800</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="text-[11px] text-slate-400">Stored in Amazon S3 CSV bucket without relational indexing.</p>
+      </div>
+
+      <!-- RDS MYSQL — CUSTOMER DATA TABLE -->
+      <div class="dash-card p-5 space-y-3">
+        <div class="flex items-center justify-between pb-3 border-b border-[#1E293B]">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="database" class="w-4 h-4 text-blue-400"></i>
+            <div>
+              <h3 class="text-sm font-bold text-white">RDS MySQL &mdash; Customer Data</h3>
+              <span class="text-[11px] font-mono text-blue-300/80">rds_mysql_catalog.retaildb.customers</span>
+            </div>
+          </div>
+          <span class="badge-pill badge-blue font-mono text-[10px]">Amazon RDS</span>
+        </div>
+
+        <div class="table-container border border-[#1E293B]">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Customer ID</th>
+                <th>Customer Name</th>
+                <th>City (Location)</th>
+              </tr>
+            </thead>
+            <tbody id="rdsCustomersTableBody" class="font-mono text-xs">
+              <!-- Dynamically populated / Static source preview -->
+              <tr><td class="font-bold text-blue-300">C001</td><td class="font-sans font-semibold text-white">Rahul Kumar</td><td>Hyderabad</td></tr>
+              <tr><td class="font-bold text-blue-300">C002</td><td class="font-sans font-semibold text-white">Arjun Reddy</td><td>Vijayawada</td></tr>
+              <tr><td class="font-bold text-blue-300">C003</td><td class="font-sans font-semibold text-white">Priya Sharma</td><td>Chennai</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="text-[11px] text-slate-400">Stored in Amazon RDS MySQL transactional relational database.</p>
+      </div>
+
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- 5. AGGREGATED CUSTOMER SALES TABLE (GET /customers) -->
+    <!-- ========================================================================= -->
+    <section class="dash-card overflow-hidden">
+      
+      <div class="p-4 border-b border-[#1E293B] bg-[#0C1322] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <div class="flex items-center space-x-2">
+            <h2 class="text-sm font-bold text-white">Customer Sales Leaderboard</h2>
+            <span class="badge-pill badge-neutral font-mono text-[10px]" id="customerRowCount">0 records</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">Aggregated Athena Federated JOIN results &middot; Click any row to query</p>
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <!-- Search input -->
+          <div class="relative">
+            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2"></i>
+            <input
+              type="text"
+              id="customerSearchInput"
+              placeholder="Search customer, city..."
+              class="bg-[#0A0F1D] border border-[#1E293B] rounded text-xs pl-8 pr-3 py-1.5 text-slate-200 focus:outline-none focus:border-amber-500 w-44 sm:w-56"
+            />
+          </div>
+          <!-- Export button -->
+          <button id="btnExportCsv" class="btn-secondary text-xs">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">Export CSV</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Table Container -->
+      <div class="table-container border-0 rounded-none">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col" class="w-16 text-center">Rank</th>
+              <th scope="col">Customer</th>
+              <th scope="col">City</th>
+              <th scope="col" class="text-right">Orders</th>
+              <th scope="col" class="text-right">Total Sales</th>
+            </tr>
+          </thead>
+          <tbody id="customerTableBody" class="font-mono text-xs">
+            <!-- Loading Skeleton Default -->
+            <tr>
+              <td colspan="5" class="px-6 py-10 text-center text-slate-500 font-sans">
+                <div class="flex flex-col items-center justify-center space-y-2">
+                  <i data-lucide="loader-2" class="w-6 h-6 text-amber-500 animate-spin mb-1"></i>
+                  <div class="text-xs font-medium text-slate-300">Loading customer analytics from AWS...</div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- 6. SALES BY CITY & SALES BY DATE (GET /city-sales & /date-sales) -->
+    <!-- ========================================================================= -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      
+      <!-- Sales by City -->
+      <div class="dash-card p-5">
+        <div class="flex items-center justify-between pb-3 border-b border-[#1E293B] mb-4">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="map-pin" class="w-4 h-4 text-emerald-400"></i>
+            <h3 class="text-sm font-bold text-white">Sales by City</h3>
+          </div>
+          <span class="badge-pill badge-neutral font-mono text-[10px]">GET /city-sales</span>
+        </div>
+        <div id="citySalesContainer" class="space-y-3">
+          <div class="text-xs text-slate-500 py-6 text-center">Loading city analytics...</div>
+        </div>
+      </div>
+
+      <!-- Sales by Date -->
+      <div class="dash-card p-5">
+        <div class="flex items-center justify-between pb-3 border-b border-[#1E293B] mb-4">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="calendar" class="w-4 h-4 text-blue-400"></i>
+            <h3 class="text-sm font-bold text-white">Sales by Date</h3>
+          </div>
+          <span class="badge-pill badge-neutral font-mono text-[10px]">GET /date-sales</span>
+        </div>
+        <div id="dateSalesContainer" class="space-y-3">
+          <div class="text-xs text-slate-500 py-6 text-center">Loading date analytics...</div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- 7. DATA SOURCES CARDS -->
+    <!-- ========================================================================= -->
+    <section class="space-y-3">
+      <div class="flex items-center space-x-2">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">DATA SOURCES</h2>
+        <span class="text-slate-600">&middot;</span>
+        <span class="text-[11px] text-slate-500 font-mono">Heterogeneous Cloud Architecture</span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+        
+        <!-- Card 1: S3 -->
+        <div class="dash-card p-4 border-l-2 border-l-amber-500">
+          <div class="flex items-center space-x-2 text-amber-400 mb-1">
+            <i data-lucide="archive" class="w-4 h-4"></i>
+            <span class="font-bold text-xs">AMAZON S3</span>
+          </div>
+          <div class="text-xs font-semibold text-white mt-1">Historical Sales Data</div>
+          <p class="text-[11px] text-slate-400 mt-1">CSV object containing historical order transactions</p>
+          <span class="inline-block font-mono text-[10px] text-amber-300/80 bg-[#0A0F1D] px-2 py-0.5 rounded mt-2.5">sales.csv</span>
+        </div>
+
+        <!-- Card 2: RDS MySQL -->
+        <div class="dash-card p-4 border-l-2 border-l-blue-500">
+          <div class="flex items-center space-x-2 text-blue-400 mb-1">
+            <i data-lucide="database" class="w-4 h-4"></i>
+            <span class="font-bold text-xs">AMAZON RDS MYSQL</span>
+          </div>
+          <div class="text-xs font-semibold text-white mt-1">Customer Database</div>
+          <p class="text-[11px] text-slate-400 mt-1">Relational database storing live customer master records</p>
+          <span class="inline-block font-mono text-[10px] text-blue-300/80 bg-[#0A0F1D] px-2 py-0.5 rounded mt-2.5">retaildb.customers</span>
+        </div>
+
+        <!-- Card 3: Athena -->
+        <div class="dash-card p-4 border-l-2 border-l-purple-500">
+          <div class="flex items-center space-x-2 text-purple-400 mb-1">
+            <i data-lucide="cpu" class="w-4 h-4"></i>
+            <span class="font-bold text-xs">AMAZON ATHENA</span>
+          </div>
+          <div class="text-xs font-semibold text-white mt-1">Federated Query Engine</div>
+          <p class="text-[11px] text-slate-400 mt-1">Executes distributed cross-source SQL queries in place</p>
+          <span class="inline-block font-mono text-[10px] text-purple-300/80 bg-[#0A0F1D] px-2 py-0.5 rounded mt-2.5">Trino Engine</span>
+        </div>
+
+        <!-- Card 4: Lambda -->
+        <div class="dash-card p-4 border-l-2 border-l-orange-500">
+          <div class="flex items-center space-x-2 text-orange-400 mb-1">
+            <i data-lucide="zap" class="w-4 h-4"></i>
+            <span class="font-bold text-xs">AWS LAMBDA</span>
+          </div>
+          <div class="text-xs font-semibold text-white mt-1">Query Backend</div>
+          <p class="text-[11px] text-slate-400 mt-1">Serverless query orchestration with AWS SDK v3</p>
+          <span class="inline-block font-mono text-[10px] text-orange-300/80 bg-[#0A0F1D] px-2 py-0.5 rounded mt-2.5">Node.js API</span>
+        </div>
+
+        <!-- Card 5: API Gateway -->
+        <div class="dash-card p-4 border-l-2 border-l-emerald-500">
+          <div class="flex items-center space-x-2 text-emerald-400 mb-1">
+            <i data-lucide="network" class="w-4 h-4"></i>
+            <span class="font-bold text-xs">API GATEWAY</span>
+          </div>
+          <div class="text-xs font-semibold text-white mt-1">Application API</div>
+          <p class="text-[11px] text-slate-400 mt-1">Secure HTTP REST endpoints with CORS enabled</p>
+          <span class="inline-block font-mono text-[10px] text-emerald-300/80 bg-[#0A0F1D] px-2 py-0.5 rounded mt-2.5">HTTP API v2</span>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- 8. ARCHITECTURE SECTION & DIAGRAM -->
+    <!-- ========================================================================= -->
+    <section class="dash-card p-6 space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#1E293B] gap-2">
+        <div>
+          <div class="flex items-center space-x-2">
+            <i data-lucide="layers" class="w-4 h-4 text-[#FF9900]"></i>
+            <h2 class="text-sm font-bold text-white">System Architecture &amp; Execution Pipeline</h2>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">End-to-end distributed data processing flow without moving data</p>
+        </div>
+        <span class="badge-pill badge-aws font-mono text-[10px]">Zero-ETL Architecture</span>
+      </div>
+
+      <!-- Visual Architecture Flow Diagram -->
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-center text-center">
+        
+        <!-- Step 1: Frontend -->
+        <div class="dash-card-subtle p-3.5 border border-blue-500/20">
+          <div class="text-[10px] font-bold text-blue-400 uppercase tracking-wider">Client Layer</div>
+          <div class="text-xs font-bold text-white mt-1">Frontend Dashboard</div>
+          <div class="text-[11px] text-slate-400 mt-0.5">HTML + JS + Tailwind</div>
+        </div>
+
+        <!-- Arrow -->
+        <div class="hidden md:flex justify-center text-slate-600">
+          <i data-lucide="arrow-right" class="w-5 h-5"></i>
+        </div>
+
+        <!-- Step 2: API Gateway -->
+        <div class="dash-card-subtle p-3.5 border border-emerald-500/20">
+          <div class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">API Layer</div>
+          <div class="text-xs font-bold text-white mt-1">Amazon API Gateway</div>
+          <div class="text-[11px] text-slate-400 mt-0.5">HTTP API (CORS Enabled)</div>
+        </div>
+
+        <!-- Arrow -->
+        <div class="hidden md:flex justify-center text-slate-600">
+          <i data-lucide="arrow-right" class="w-5 h-5"></i>
+        </div>
+
+        <!-- Step 3: AWS Lambda -->
+        <div class="dash-card-subtle p-3.5 border border-orange-500/20">
+          <div class="text-[10px] font-bold text-orange-400 uppercase tracking-wider">Compute Layer</div>
+          <div class="text-xs font-bold text-white mt-1">AWS Lambda</div>
+          <div class="text-[11px] text-slate-400 mt-0.5">Node.js Query Dispatcher</div>
+        </div>
+
+      </div>
+
+      <!-- Lower Branching to Athena, S3, and RDS -->
+      <div class="pt-4 border-t border-[#1E293B] flex flex-col items-center">
+        <div class="text-slate-500 mb-2">
+          <i data-lucide="arrow-down" class="w-5 h-5"></i>
+        </div>
+
+        <div class="w-full max-w-2xl p-4 rounded-lg bg-[#0C1322] border border-purple-500/30 text-center">
+          <div class="text-xs font-bold text-purple-400 uppercase tracking-wider">Amazon Athena Query Engine</div>
+          <div class="text-sm font-semibold text-white mt-1">Federated Cross-Source SQL JOIN</div>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 pt-3 border-t border-[#1E293B]">
+            <div class="p-2.5 rounded bg-[#0A0F1D] border border-amber-500/20 text-xs text-left">
+              <div class="text-amber-400 font-semibold flex items-center space-x-1.5">
+                <i data-lucide="archive" class="w-3.5 h-3.5"></i>
+                <span>Amazon S3 (Sales Data)</span>
+              </div>
+              <div class="text-[11px] text-slate-400 font-mono mt-1">retail_analytics.sales (sales.csv)</div>
+            </div>
+            <div class="p-2.5 rounded bg-[#0A0F1D] border border-blue-500/20 text-xs text-left">
+              <div class="text-blue-400 font-semibold flex items-center space-x-1.5">
+                <i data-lucide="database" class="w-3.5 h-3.5"></i>
+                <span>Amazon RDS MySQL (Customer Data)</span>
+              </div>
+              <div class="text-[11px] text-slate-400 font-mono mt-1">rds_mysql_catalog.retaildb.customers</div>
+            </div>
+          </div>
+
+          <div class="mt-3 pt-2 text-[11px] text-emerald-400 font-semibold uppercase tracking-wider">
+            &darr; FEDERATED JOIN &darr; &rarr; LIVE ANALYTICS
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- 9. PROJECT CONCEPT & EXPLANATION SECTION -->
+    <!-- ========================================================================= -->
+    <section class="dash-card p-5 border-l-4 border-l-amber-500">
+      <h3 class="text-xs font-bold uppercase tracking-wider text-amber-400 mb-1">Project Concept &amp; Architecture</h3>
+      <p class="text-xs text-slate-300 leading-relaxed">
+        Historical sales data is stored in Amazon S3, while customer information is stored in Amazon RDS MySQL. Amazon Athena uses federated querying to combine these datasets without first moving them into a single database. AWS Lambda and API Gateway expose the analytics to the web dashboard.
+      </p>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- 10. LIVE STATUS SECTION -->
+    <!-- ========================================================================= -->
+    <section class="dash-card p-5 space-y-3">
+      <div class="flex items-center justify-between pb-3 border-b border-[#1E293B]">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+          <h2 class="text-sm font-bold text-white">Live System Status</h2>
+        </div>
+        <span class="badge-pill badge-live text-[10px]" id="systemStatusBadge">● Operational</span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        
+        <!-- Backend -->
+        <div class="dash-card-subtle p-3 flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-semibold text-slate-400">Backend</div>
+            <div class="text-xs font-bold text-white mt-0.5">AWS Lambda</div>
+          </div>
+          <span class="badge-pill badge-live text-[10px]" id="statusBackend">● Operational</span>
+        </div>
+
+        <!-- Athena Federation -->
+        <div class="dash-card-subtle p-3 flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-semibold text-slate-400">Athena Federation</div>
+            <div class="text-xs font-bold text-white mt-0.5">Trino Engine</div>
+          </div>
+          <span class="badge-pill badge-live text-[10px]" id="statusAthena">● Operational</span>
+        </div>
+
+        <!-- API -->
+        <div class="dash-card-subtle p-3 flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-semibold text-slate-400">API Gateway</div>
+            <div class="text-xs font-bold text-white mt-0.5">HTTP API v2</div>
+          </div>
+          <span class="badge-pill badge-live text-[10px]" id="statusApi">● Connected</span>
+        </div>
+
+        <!-- Sources -->
+        <div class="dash-card-subtle p-3 flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-semibold text-slate-400">Data Sources</div>
+            <div class="text-xs font-bold text-white mt-0.5 font-mono">S3 + RDS MySQL</div>
+          </div>
+          <span class="badge-pill badge-live text-[10px]">✓ Synchronized</span>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- 11. SQL QUERY EXPLORER SECTION -->
+    <!-- ========================================================================= -->
+    <section class="dash-card p-5 space-y-3">
+      <div class="flex items-center justify-between pb-3 border-b border-[#1E293B]">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="code" class="w-4 h-4 text-[#FF9900]"></i>
+          <div>
+            <h2 class="text-sm font-bold text-white">Federated SQL Query</h2>
+            <p class="text-xs text-slate-400">Real query executed by Amazon Athena across S3 and RDS catalogs</p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button id="btnCopySql" class="btn-secondary text-xs">
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+            <span>Copy SQL</span>
+          </button>
+          <button id="btnToggleSql" class="btn-secondary text-xs">
+            <span id="toggleSqlLabel">Collapse</span>
+            <i data-lucide="chevron-up" id="toggleSqlIcon" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      </div>
+
+      <div id="sqlBlockContainer" class="space-y-3">
+        <pre class="bg-[#070A12] rounded-md p-4 text-xs font-mono text-slate-300 overflow-x-auto border border-[#1E293B] leading-relaxed"><code class="language-sql"><span class="text-purple-400">SELECT</span>
+    c.customer_name,
+    c.city,
+    <span class="text-blue-400">COUNT</span>(s.order_id) <span class="text-purple-400">AS</span> order_count,
+    <span class="text-blue-400">SUM</span>(s.amount) <span class="text-purple-400">AS</span> total_amount
+<span class="text-purple-400">FROM</span> retail_analytics.sales s
+<span class="text-purple-400">JOIN</span> rds_mysql_catalog.retaildb.customers c
+    <span class="text-purple-400">ON</span> s.customer_id = c.customer_id
+<span class="text-purple-400">GROUP BY</span>
+    c.customer_name,
+    c.city
+<span class="text-purple-400">ORDER BY</span> total_amount <span class="text-purple-400">DESC</span>;</code></pre>
+
+        <p class="text-xs text-slate-400">
+          This query joins sales data stored in Amazon S3 with customer data stored in Amazon RDS using Amazon Athena Federated Query.
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- 12. FOOTER -->
+  <!-- ========================================================================= -->
+  <footer class="border-t border-[#1E293B] bg-[#0C1322] py-4 text-xs text-slate-500 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div>
+        <span class="font-medium text-slate-400">Amazon Athena Federated Query Dashboard</span>
+        <span class="mx-2">&middot;</span>
+        <span>Retail Sales Intelligence</span>
+      </div>
+      <div class="font-mono text-[11px] text-slate-500">
+        Live AWS Architecture &middot; eu-north-1 &middot; S3 &times; RDS MySQL
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast Notification Box -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

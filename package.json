@@ -1,0 +1,13 @@
+{
+  "name": "athena-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "npx tailwindcss -i ./frontend/styles.css -o ./frontend/dist/styles.min.css --minify --content \"./frontend/**/*.html\" \"./frontend/**/*.js\" && npx esbuild ./frontend/app.js --bundle --minify --outfile=./frontend/dist/app.min.js"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0",
+    "autoprefixer": "^10.4.15",
+    "esbuild": "^0.20.0"
+  }
+}

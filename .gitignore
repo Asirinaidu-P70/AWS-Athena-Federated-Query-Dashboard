@@ -1,0 +1,22 @@
+# Ignore node modules and environment files
+node_modules/
+backend/.env
+backend/.env.*
+*.env
+*.env.*
+# OS files
+.DS_Store
+Thumbs.db
+# Logs
+*.log
+# Build artifacts
+/dist
+/build
+# Temporary files
+*.tmp
+*.temp
+# IDE files
+.vscode/
+.idea/
+# Sensitive config
+config.js

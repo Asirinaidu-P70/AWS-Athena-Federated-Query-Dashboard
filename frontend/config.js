@@ -4,8 +4,8 @@
  */
 
 const CONFIG = {
-  // Live AWS API Gateway HTTP API Endpoint
-  API_BASE_URL: "https://pzp71tra0g.execute-api.eu-north-1.amazonaws.com",
+  // Local backend API endpoint
+  API_BASE_URL: "http://localhost:3000",
   
   // Timeout in milliseconds for live Athena query execution
   REQUEST_TIMEOUT_MS: 45000,

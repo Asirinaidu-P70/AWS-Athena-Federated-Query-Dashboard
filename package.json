@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "node ./node_modules/tailwindcss/lib/cli.js -i ./frontend/styles.css -o ./frontend/dist/styles.min.css --minify --content \"./frontend/**/*.html\" \"./frontend/**/*.js\" && node ./node_modules/esbuild/bin/esbuild ./frontend/app.js --bundle --minify --outfile=./frontend/dist/app.min.js"
+    "build": "node ./node_modules/tailwindcss/lib/cli.js -i ./frontend/styles.css -o ./frontend/dist/styles.min.css --minify --content \"./frontend/**/*.html\" \"./frontend/**/*.js\" && node ./node_modules/esbuild/bin/esbuild ./frontend/app.js --bundle --minify --outfile=./frontend/dist/app.min.js && node ./scripts/prepare-vercel-output.js"
   },
   "devDependencies": {
     "tailwindcss": "^3.4.0",

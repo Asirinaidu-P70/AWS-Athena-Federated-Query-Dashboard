@@ -1,7 +1,7 @@
 /**
  * Amazon Athena Federated Query Dashboard — Retail Sales Intelligence
  * Live AWS Frontend Controller (Vanilla JavaScript)
- * 
+ *
  * Endpoints:
  * - GET /health
  * - GET /summary
@@ -131,9 +131,7 @@ async function apiGet(path) {
   try {
     const response = await fetch(`${baseUrl}${path}`, {
       method: "GET",
-      headers: {
-        "Accept": "application/json"
-      },
+      headers: { "Accept": "application/json" },
       signal: controller.signal
     });
 
@@ -157,38 +155,25 @@ async function apiGet(path) {
 // -------------------------------------------------------------
 // Modular Fetch Functions
 // -------------------------------------------------------------
-async function fetchHealth() {
-  return await apiGet("/health");
-}
-
-async function fetchSummary() {
-  return await apiGet("/summary");
-}
-
+async function fetchHealth() { return await apiGet("/health"); }
+async function fetchSummary() { return await apiGet("/summary"); }
 async function fetchCustomers(customerId = null) {
   const queryParam = customerId && customerId !== "ALL" ? `?customer_id=${encodeURIComponent(customerId)}` : "";
   return await apiGet(`/customers${queryParam}`);
 }
-
-async function fetchCitySales() {
-  return await apiGet("/city-sales");
-}
-
-async function fetchDateSales() {
-  return await apiGet("/date-sales");
-}
+async function fetchCitySales() { return await apiGet("/city-sales"); }
+async function fetchDateSales() { return await apiGet("/date-sales"); }
 
 // -------------------------------------------------------------
 // Render Summary KPIs
 // -------------------------------------------------------------
 function renderSummary(data) {
+  if (!data) return;
   const kpiTotalSales = document.getElementById("kpiTotalSales");
   const kpiTotalOrders = document.getElementById("kpiTotalOrders");
   const kpiCustomers = document.getElementById("kpiCustomers");
   const kpiAvgOrderValue = document.getElementById("kpiAvgOrderValue");
   const lastQueryTimestamp = document.getElementById("lastQueryTimestamp");
-
-  if (!data) return;
 
   if (kpiTotalSales) kpiTotalSales.textContent = formatCurrency(data.totalSales);
   if (kpiTotalOrders) kpiTotalOrders.textContent = formatNumber(data.totalOrders);
@@ -220,19 +205,15 @@ function renderCustomers(customers = []) {
   }
 
   if (rowCountBadge) {
-    rowCountBadge.textContent = `${customers.length} ${customers.length === 1 ? 'record' : 'records'}`;
+    rowCountBadge.textContent = `${customers.length} ${customers.length === 1 ? "record" : "records"}`;
   }
 
   tableBody.innerHTML = customers.map((c, index) => {
     const rank = index + 1;
     let rankBadge = `<span class="inline-flex items-center justify-center w-5 h-5 rounded bg-slate-800 text-slate-400 font-mono text-[10px]">${rank}</span>`;
-    if (rank === 1) {
-      rankBadge = `<span class="inline-flex items-center justify-center w-5 h-5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono text-[10px] font-bold">#1</span>`;
-    } else if (rank === 2) {
-      rankBadge = `<span class="inline-flex items-center justify-center w-5 h-5 rounded bg-slate-400/20 text-slate-200 border border-slate-400/40 font-mono text-[10px] font-bold">#2</span>`;
-    } else if (rank === 3) {
-      rankBadge = `<span class="inline-flex items-center justify-center w-5 h-5 rounded bg-amber-700/20 text-amber-400 border border-amber-700/40 font-mono text-[10px] font-bold">#3</span>`;
-    }
+    if (rank === 1) rankBadge = `<span class="inline-flex items-center justify-center w-5 h-5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono text-[10px] font-bold">#1</span>`;
+    else if (rank === 2) rankBadge = `<span class="inline-flex items-center justify-center w-5 h-5 rounded bg-slate-400/20 text-slate-200 border border-slate-400/40 font-mono text-[10px] font-bold">#2</span>`;
+    else if (rank === 3) rankBadge = `<span class="inline-flex items-center justify-center w-5 h-5 rounded bg-amber-700/20 text-amber-400 border border-amber-700/40 font-mono text-[10px] font-bold">#3</span>`;
 
     const customerName = c.customer_name || c.customerName || "Unknown Customer";
     const city = c.city || "--";
@@ -262,6 +243,8 @@ function renderCustomers(customers = []) {
 // Render Interactive Federated Query Result Card
 // -------------------------------------------------------------
 function renderInteractiveQueryResult(selectedVal, customersList) {
+  if (!customersList || customersList.length === 0) return;
+
   const resCustomerName = document.getElementById("resCustomerName");
   const resCustomerId = document.getElementById("resCustomerId");
   const resCityLocation = document.getElementById("resCityLocation");
@@ -269,13 +252,10 @@ function renderInteractiveQueryResult(selectedVal, customersList) {
   const resTotalSales = document.getElementById("resTotalSales");
   const matchedOrdersTableBody = document.getElementById("matchedOrdersTableBody");
 
-  if (!customersList || customersList.length === 0) return;
-
   let targetCustomer = null;
   let targetId = "C001";
 
   if (selectedVal === "ALL") {
-    // Show top customer or combined
     targetCustomer = customersList[0];
     const matchCust = RDS_CUSTOMERS_DATA.find(r => r.customer_name.toLowerCase() === (targetCustomer.customer_name || "").toLowerCase());
     targetId = matchCust ? matchCust.customer_id : "C001";
@@ -307,7 +287,6 @@ function renderInteractiveQueryResult(selectedVal, customersList) {
   if (resOrdersCount) resOrdersCount.textContent = `Orders: ${orderCount} (Amazon S3)`;
   if (resTotalSales) resTotalSales.textContent = formatCurrency(totalAmount);
 
-  // Filter S3 matching orders for this customer ID
   const matchedOrders = S3_SALES_DATA.filter(o => o.customer_id === targetId);
 
   if (matchedOrdersTableBody) {
@@ -363,7 +342,7 @@ function renderCitySales(cityData = []) {
             <span>${city}</span>
           </div>
           <div class="flex items-center space-x-3 font-mono text-xs">
-            <span class="text-slate-400">${orderCount} ${orderCount === 1 ? 'order' : 'orders'}</span>
+            <span class="text-slate-400">${orderCount} ${orderCount === 1 ? "order" : "orders"}</span>
             <span class="font-bold text-emerald-400">${formatCurrency(totalAmount)}</span>
           </div>
         </div>
@@ -403,7 +382,7 @@ function renderDateSales(dateData = []) {
             <span class="font-mono text-xs">${orderDate}</span>
           </div>
           <div class="flex items-center space-x-3 font-mono text-xs">
-            <span class="text-slate-400">${orderCount} ${orderCount === 1 ? 'order' : 'orders'}</span>
+            <span class="text-slate-400">${orderCount} ${orderCount === 1 ? "order" : "orders"}</span>
             <span class="font-bold text-blue-400">${formatCurrency(totalAmount)}</span>
           </div>
         </div>
@@ -452,13 +431,8 @@ function showLoading() {
     `;
   }
 
-  if (cityContainer) {
-    cityContainer.innerHTML = `<div class="text-xs text-slate-500 py-6 text-center animate-pulse">Querying Amazon Athena for city distribution...</div>`;
-  }
-
-  if (dateContainer) {
-    dateContainer.innerHTML = `<div class="text-xs text-slate-500 py-6 text-center animate-pulse">Querying Amazon Athena for sales timeline...</div>`;
-  }
+  if (cityContainer) cityContainer.innerHTML = `<div class="text-xs text-slate-500 py-6 text-center animate-pulse">Querying Amazon Athena for city distribution...</div>`;
+  if (dateContainer) dateContainer.innerHTML = `<div class="text-xs text-slate-500 py-6 text-center animate-pulse">Querying Amazon Athena for sales timeline...</div>`;
 }
 
 // -------------------------------------------------------------
@@ -513,7 +487,6 @@ async function runFederatedQuery() {
 
   const selectedVal = customerSelect ? customerSelect.value : "ALL";
 
-  // Update button to loading state
   if (btnRunQuery) {
     btnRunQuery.disabled = true;
     if (btnIcon) {
@@ -535,7 +508,6 @@ async function runFederatedQuery() {
   const startTime = performance.now();
 
   try {
-    // Concurrent fetch from live AWS API Gateway
     const [summaryRes, customersRes, cityRes, dateRes] = await Promise.all([
       fetchSummary(),
       fetchCustomers(selectedVal),
@@ -545,23 +517,14 @@ async function runFederatedQuery() {
 
     const elapsed = Math.round(performance.now() - startTime);
 
-    // 1. Populate KPI Cards
-    if (summaryRes) {
-      renderSummary(summaryRes);
-    }
+    if (summaryRes) renderSummary(summaryRes);
 
-    // 2. Populate Customer Table
     currentCustomerData = customersRes?.data || [];
     renderCustomers(currentCustomerData);
-
-    // 3. Populate Interactive Result Card for Selected Customer
     renderInteractiveQueryResult(selectedVal, currentCustomerData);
-
-    // 4. Populate City & Date Breakdowns
     renderCitySales(cityRes?.data || []);
     renderDateSales(dateRes?.data || []);
 
-    // 5. Update Button & Feedback
     if (btnText) btnText.textContent = "Federated Query Completed";
     if (btnIcon) {
       btnIcon.setAttribute("data-lucide", "check-circle");
@@ -572,7 +535,6 @@ async function runFederatedQuery() {
       queryStatus.className = "text-xs font-mono text-emerald-400";
     }
     renderIcons();
-
     showSuccess(`Athena Federated Query completed in ${elapsed}ms`);
 
     setTimeout(() => {
@@ -609,7 +571,6 @@ window.selectCustomerByName = function(customerName) {
   if (customerSelect && matchRds) {
     customerSelect.value = matchRds.customer_id;
     runFederatedQuery();
-    // Scroll to interactive section smoothly
     document.getElementById("federatedResultCard")?.scrollIntoView({ behavior: "smooth" });
   }
 };
@@ -641,7 +602,6 @@ function exportCustomerCsv() {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-
   showSuccess(`Exported ${currentCustomerData.length} records to CSV`);
 }
 
@@ -650,49 +610,32 @@ function exportCustomerCsv() {
 // -------------------------------------------------------------
 document.addEventListener("DOMContentLoaded", () => {
 
-
-  // Render icons first
   renderIcons();
 
   const btnRunQuery = document.getElementById("btnRunQuery");
   const btnRetryAlert = document.getElementById("btnRetryAlert");
   const btnCloseAlert = document.getElementById("btnCloseAlert");
   const customerSearchInput = document.getElementById("customerSearchInput");
+  const customerSelect = document.getElementById("customerSelect");
+  const btnExportCsv = document.getElementById("btnExportCsv");
+  const btnCopySql = document.getElementById("btnCopySql");
+  const btnToggleSql = document.getElementById("btnToggleSql");
+  const sqlBlockContainer = document.getElementById("sqlBlockContainer");
+  const toggleSqlLabel = document.getElementById("toggleSqlLabel");
+  const toggleSqlIcon = document.getElementById("toggleSqlIcon");
 
+  if (btnRunQuery) btnRunQuery.addEventListener("click", runFederatedQuery);
 
-  // Run Query button listener
-  if (btnRunQuery) {
-    btnRunQuery.addEventListener("click", runFederatedQuery);
-  }
+  if (customerSelect) customerSelect.addEventListener("change", () => runFederatedQuery());
 
-  // Dropdown change triggers query
-  if (customerSelect) {
-    customerSelect.addEventListener("change", () => {
-      runFederatedQuery();
-    });
-  }
+  if (btnRetryAlert) btnRetryAlert.addEventListener("click", () => { hideAlert(); runFederatedQuery(); });
 
-  // Retry Alert button
-  if (btnRetryAlert) {
-    btnRetryAlert.addEventListener("click", () => {
-      hideAlert();
-      runFederatedQuery();
-    });
-  }
+  if (btnCloseAlert) btnCloseAlert.addEventListener("click", hideAlert);
 
-  // Close Alert button
-  if (btnCloseAlert) {
-    btnCloseAlert.addEventListener("click", hideAlert);
-  }
-
-  // Live Customer Search Filter
   if (customerSearchInput) {
     customerSearchInput.addEventListener("input", (e) => {
       const term = (e.target.value || "").trim().toLowerCase();
-      if (!term) {
-        renderCustomers(currentCustomerData);
-        return;
-      }
+      if (!term) { renderCustomers(currentCustomerData); return; }
       const filtered = currentCustomerData.filter(c => {
         const name = (c.customer_name || c.customerName || "").toLowerCase();
         const city = (c.city || "").toLowerCase();
@@ -702,12 +645,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // CSV Export Listener
-  if (btnExportCsv) {
-    btnExportCsv.addEventListener("click", exportCustomerCsv);
-  }
+  if (btnExportCsv) btnExportCsv.addEventListener("click", exportCustomerCsv);
 
-  // Copy SQL Query
   if (btnCopySql) {
     btnCopySql.addEventListener("click", () => {
       const sqlText = `SELECT
@@ -715,22 +654,19 @@ document.addEventListener("DOMContentLoaded", () => {
     c.city,
     COUNT(s.order_id) AS order_count,
     SUM(s.amount) AS total_amount
-  FROM retail_analytics.sales s
-  JOIN rds_mysql_catalog.retaildb.customers c
+FROM retail_analytics.sales s
+JOIN rds_mysql_catalog.retaildb.customers c
     ON s.customer_id = c.customer_id
-  GROUP BY
+GROUP BY
     c.customer_name,
     c.city
-  ORDER BY total_amount DESC;`;
-      navigator.clipboard.writeText(sqlText).then(() => {
-        showSuccess("SQL query copied to clipboard");
-      }).catch(() => {
-        showToast("Unable to copy SQL", "error");
-      });
+ORDER BY total_amount DESC;`;
+      navigator.clipboard.writeText(sqlText)
+        .then(() => showSuccess("SQL query copied to clipboard"))
+        .catch(() => showToast("Unable to copy SQL", "error"));
     });
   }
 
-  // Toggle SQL Block visibility
   let isSqlCollapsed = false;
   if (btnToggleSql && sqlBlockContainer) {
     btnToggleSql.addEventListener("click", () => {
@@ -748,7 +684,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Keyboard shortcut Ctrl+Enter / Cmd+Enter to run query
   document.addEventListener("keydown", (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
       e.preventDefault();
@@ -756,93 +691,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  
   checkBackendHealth();
   runFederatedQuery();
-
-  
-  
-  
-
-
-  
-
-
-  
-  
-  
-
-
-  // Run Query button listener
-  if (btnRunQuery) {
-    btnRunQuery.addEventListener("click", runFederatedQuery);
-  }
-
-  // When customer dropdown changes, auto-trigger or prepare query
-  if (customerSelect) {
-    customerSelect.addEventListener("change", () => {
-      runFederatedQuery();
-    });
-  }
-
-  // Retry Alert button
-  if (btnRetryAlert) {
-    btnRetryAlert.addEventListener("click", () => {
-      hideAlert();
-      runFederatedQuery();
-    });
-  }
-
-  // Close Alert
-  if (btnCloseAlert) {
-    btnCloseAlert.addEventListener("click", hideAlert);
-  }
-
-  // Live Customer Search Filter
-  if (customerSearchInput) {
-    customerSearchInput.addEventListener("input", (e) => {
-      const term = (e.target.value || "").trim().toLowerCase();
-      if (!term) {
-        renderCustomers(currentCustomerData);
-        return;
-      }
-      const filtered = currentCustomerData.filter(c => {
-        const name = (c.customer_name || c.customerName || "").toLowerCase();
-        const city = (c.city || "").toLowerCase();
-        return name.includes(term) || city.includes(term);
-      });
-      renderCustomers(filtered);
-    });
-  }
-
-  // CSV Export Listener
-  if (btnExportCsv) {
-    btnExportCsv.addEventListener("click", exportCustomerCsv);
-  }
-
-  // Copy SQL Query
-  if (btnCopySql) {
-    btnCopySql.addEventListener("click", () => {
-      const sqlText = `SELECT
-    c.customer_name,
-    c.city,
-    COUNT(s.order_id) AS order_count,
-    SUM(s.amount) AS total_amount
-FROM retail_analytics.sales s
-JOIN rds_mysql_catalog.retaildb.customers c
-    ON s.customer_id = c.customer_id
-GROUP BY
-    c.customer_name,
-    c.city
-ORDER BY total_amount DESC;`;
-
-      navigator.clipboard.writeText(sqlText).then(() => {
-        showSuccess("SQL query copied to clipboard");
-      }).catch(() => {
-        showToast("Unable to copy SQL", "error");
-      });
-    });
-  }
-
-
 });

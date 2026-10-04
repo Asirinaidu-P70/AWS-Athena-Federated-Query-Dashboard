@@ -143,33 +143,16 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 2. Serve Static Frontend Files
-  let filePath = path.join(FRONTEND_DIR, pathname === "/" ? "index.html" : pathname);
-  const ext = path.extname(filePath).toLowerCase();
-  const contentType = MIME_TYPES[ext] || "text/plain";
-
-  fs.readFile(filePath, (err, content) => {
-    if (err) {
-      if (err.code === "ENOENT") {
-        // Fallback to index.html for SPA routing
-        fs.readFile(path.join(FRONTEND_DIR, "index.html"), (err2, indexContent) => {
-          if (err2) {
-            res.writeHead(404, { "Content-Type": "text/plain" });
-            res.end("404 Not Found");
-          } else {
-            res.writeHead(200, { "Content-Type": "text/html" });
-            res.end(indexContent, "utf-8");
-          }
-        });
-      } else {
-        res.writeHead(500);
-        res.end(`Server Error: ${err.code}`);
-      }
-    } else {
-      res.writeHead(200, { "Content-Type": contentType });
-      res.end(content, "utf-8");
-    }
+  // 2. Unknown route — return JSON info (this is a pure API server)
+  res.writeHead(404, {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*"
   });
+  res.end(JSON.stringify({
+    error: "Not found",
+    message: "This is the Athena Dashboard API server.",
+    availableEndpoints: ["/health", "/summary", "/customers", "/city-sales", "/date-sales"]
+  }));
 });
 
 server.listen(PORT, () => {
